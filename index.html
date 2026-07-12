@@ -1,34 +1,199 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Double Dummy Bridge Simulator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
 
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="styles.css">
-        <title>Double Dummy Bridge Simulator</title>
-    </head>
+    <!-- 1. Dynamic Controls Header -->
+    <div class="controls-panel">
+        <label for="trumpSelect">Trump Suit:</label>
+        <select id="trumpSelect">
+            <option value="4" selected>No Trump (NT)</option>
+            <option value="0">Spades (♠)</option>
+            <option value="1">Hearts (♥)</option>
+            <option value="2">Diamonds (♦)</option>
+            <option value="3">Clubs (♣)</option>
+        </select>
 
-    <body>
-        <h1>Welcome to BridgeSolver!</h1>
-        <h1>&#9824; &#9829; &#9830; &#9827;</h1><br>
-        <button id="calcBtn">Compute Best Card Play</button>
-        <div id="output"></div>
+        <label for="leadSelect">Opening Lead:</label>
+        <select id="leadSelect">
+            <option value="0" selected>North</option>
+            <option value="1">East</option>
+            <option value="2">South</option>
+            <option value="3">West</option>
+        </select>
 
-        <script>
-            document.getElementById('calcBtn').addEventListener('click', async () => {
-                const outputDiv = document.getElementById('output');
-                outputDiv.innerText = "Analyzing search trees...";
+        <button id="calcBtn">Analyze Board State</button>
+        <!-- Reset Button-->
+         <button id="resetBtn" class="secondary-btn">Reset Board</button>
+    </div>
 
-                // Standard PBN bridge hand notation strings sent to the native bridge API
-                const mockPBN = "N:QJ10.K5.A876.J943 T9.QJT9.K543.A82 K87.A432.QJT.K76 A65432.876.92.QT";
+    <!-- 2. Interactive Card Felt Table Layout -->
+    <div class="bridge-table">
+        <div class="seat" id="north-seat">
+            <div class="hand-container" id="north-hand"></div>
+        </div>
+        <div class="seat" id="west-seat">
+            <div class="hand-container" id="west-hand"></div>
+        </div>
+        <div class="center-felt" id="drop-zone">
+            <span>PLAY ZONE</span>
+        </div>
+        <div class="seat" id="east-seat">
+            <div class="hand-container" id="east-hand"></div>
+        </div>
+        <div class="seat" id="south-seat">
+            <div class="hand-container" id="south-hand"></div>
+        </div>
+    </div>
 
-                // Accessing the API securely from preload.js
-                const response = await window.api.solveBoardData(mockPBN);
+    <!-- 3. Engine Results Display Box -->
+    <div id="output-panel">Click 'Analyze Board State' to run tree evaluations.</div>
 
-                outputDiv.innerText = `Result from DDS Engine:\nCalculated Tricks: ${response.calculatedTricks}\nEvaluated Hand: ${response.pbnEvaluated}`;
+    <!-- 4. Interactive Application Controller Script -->
+    <script>
+       // The base starting hand definition layout
+        const startingPBN = "N:QJ10.K5.A876.J943 T9.QJT9.K543.A82 K87.A432.QJT.K76 A65432.876.92.QT";
+
+        const suitSymbols = { 0: '♠', 1: '♥', 2: '♦', 3: '♣' };
+        const suitClasses = { 0: 'black', 1: 'red', 2: 'red', 3: 'black' };
+
+        // Parse standard PBN strings to populate our local card arrays
+        function parsePbn(pbnString) {
+            const cleanPbn = pbnString.substring(2); 
+            const seats = cleanPbn.split(' '); 
+            const seatOrder = ['north', 'east', 'south', 'west'];
+            
+            seats.forEach((seatCards, seatIndex) => {
+                const container = document.getElementById(`${seatOrder[seatIndex]}-hand`);
+                container.innerHTML = ''; 
+                
+                const suits = seatCards.split('.'); 
+                suits.forEach((cardsInSuit, suitIndex) => {
+                    for (let card of cardsInSuit) {
+                        createCardElement(card, suitIndex, container);
+                    }
+                });
             });
-        </script>
+        }
 
-    </body>
+        // Dynamically instantiate HTML card markup frames
+        function createCardElement(rank, suitNum, targetContainer) {
+            const cardEl = document.createElement('div');
+            cardEl.className = `card ${suitClasses[suitNum]}`;
+            cardEl.draggable = true;
 
+            // Attach custom data attributes to the card element so JavaScript can read them later
+            cardEl.dataset.rank = rank;
+            cardEl.dataset.suit = suitNum;
+
+            const symbol = suitSymbols[suitNum];
+            cardEl.innerHTML = `
+                <div>${rank}${symbol}</div>
+                <div style="align-self: center; font-size: 24px;">${symbol}</div>
+                <div style="align-self: flex-end; transform: rotate(180deg);">${rank}${symbol}</div>
+            `;
+
+            cardEl.addEventListener('dragstart', (e) => {
+                cardEl.style.opacity = '0.4';
+                window.activeDraggedCard = cardEl;
+            });
+
+            cardEl.addEventListener('dragend', () => {
+                cardEl.style.opacity = '1';
+            });
+
+            targetContainer.appendChild(cardEl);
+        }
+
+        // Initialize drop-zone area listening behaviors
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.addEventListener('dragover', (e) => e.preventDefault());
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (window.activeDraggedCard) {
+                if(dropZone.querySelector('span')) dropZone.querySelector('span').remove();
+                
+                // Remove card from container and place it in play zone
+                window.activeDraggedCard.style.margin = '0'; 
+                dropZone.appendChild(window.activeDraggedCard);
+                window.activeDraggedCard = null;
+                
+                // DYNAMIC ADVANTAGE: Automatically recalculate the matrix immediately whenever a card is played!
+                triggerEngineCalculation();
+            }
+        });
+
+       // NEW FIXED FUNCTION: Loops through the UI layout and builds a legally structured PBN string
+        function generateCurrentPBN() {
+            const seatOrder = ['north', 'east', 'south', 'west'];
+            let pbnSegments = [];
+
+            seatOrder.forEach(seat => {
+                const container = document.getElementById(`${seat}-hand`);
+                const cards = Array.from(container.querySelectorAll('.card'));
+                
+                // Group the remaining cards in this hand by their suit integer id (0=S, 1=H, 2=D, 3=C)
+                let suitsTracking = { 0: "", 1: "", 2: "", 3: "" };
+                cards.forEach(card => {
+                    const suit = card.dataset.suit;
+                    const rank = card.dataset.rank;
+                    suitsTracking[suit] += rank;
+                });
+
+                // FIXED: If a suit is empty, we must keep the dot separator intact 
+                // to prevent the string from collapsing into an invalid format like "..."
+                const spades = suitsTracking[0];
+                const hearts = suitsTracking[1];
+                const diamonds = suitsTracking[2];
+                const clubs = suitsTracking[3];
+
+                const seatString = `${spades}.${hearts}.${diamonds}.${clubs}`;
+                pbnSegments.push(seatString);
+            });
+
+            // Return the completed string prefixed with the default dealer seat format
+            return "N:" + pbnSegments.join(" ");
+        }
+
+
+        // Isolated engine calculation launcher tool
+        async function triggerEngineCalculation() {
+            const outputDiv = document.getElementById('output-panel');
+            outputDiv.innerText = "Analyzing dynamic board search trees in C++...";
+
+            const selectedTrump = parseInt(document.getElementById('trumpSelect').value); 
+            const selectedLead = parseInt(document.getElementById('leadSelect').value);
+
+            // Call our generator function to capture exactly what is left on the table
+            const dynamicPBN = generateCurrentPBN();
+
+            const gamePayload = {
+                pbn: dynamicPBN,
+                trump: selectedTrump,
+                first: selectedLead
+            };
+
+            try {
+                const response = await window.api.solveBoardData(gamePayload);
+                outputDiv.innerHTML = `<strong>Result from DDS Engine:</strong> Remaining tricks declarer can take: <span style="color:#007acc; font-size:22px;">${response.calculatedTricks}</span>`;
+            } catch (err) {
+                outputDiv.innerText = `Error compiling engine metrics: ${err.message}`;
+            }
+        }
+
+        // Bind dropdown change options to update calculations immediately on user toggles
+        document.getElementById('trumpSelect').addEventListener('change', triggerEngineCalculation);
+        document.getElementById('leadSelect').addEventListener('change', triggerEngineCalculation);
+        document.getElementById('calcBtn').addEventListener('click', triggerEngineCalculation);
+
+        // Run initial parser layout loop on startup configuration
+        parsePbn(startingPBN);
+
+    </script>
+</body>
 </html>
