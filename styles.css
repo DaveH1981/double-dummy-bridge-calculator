@@ -125,6 +125,15 @@
         .card.black { color: #111; }
         .card:active { cursor: grabbing; }
 
+        #dealBtn {
+            background: #28a745;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
         #output-panel {
             margin-top: 25px;
             background: #2a2a2a;
@@ -134,4 +143,5 @@
             text-align: center;
             font-size: 18px;
             border-left: 5px solid #007acc;
+        }
         }
