@@ -30,6 +30,7 @@
         <button id="calcBtn">Analyze Board State</button>
         <!-- Reset Button-->
          <button id="resetBtn" class="secondary-btn">Reset Board</button>
+         <button id="dealBtn">Deal Random Hand</button>
     </div>
 
     <!-- 2. Interactive Card Felt Table Layout -->
@@ -191,9 +192,90 @@
         document.getElementById('leadSelect').addEventListener('change', triggerEngineCalculation);
         document.getElementById('calcBtn').addEventListener('click', triggerEngineCalculation);
 
-        // Run initial parser layout loop on startup configuration
-        parsePbn(startingPBN);
+        // NEW FUNCTION: Generates a randomized, perfectly legal 52-card bridge deal in PBN format
+        function generateRandomBridgeDeal() {
+            const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+            // Suits indexed to match your existing metadata mappings: 0=S, 1=H, 2=D, 3=C
+            const suits =; 
+            let deck = [];
 
+            // Create a pristine 52 card deck
+            suits.forEach(suit => {
+                ranks.forEach(rank => {
+                    deck.push({ rank, suit });
+                });
+            });
+
+            // Fisher-Yates Shuffling Algorithm (guarantees uniform random distribution)
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+
+            // Allocate 13 cards to each of the four seats
+            let hands = { north: [], east: [], south: [], west: [] };
+            const seatNames = ['north', 'east', 'south', 'west'];
+            
+            deck.forEach((card, index) => {
+                const seat = seatNames[index % 4];
+                hands[seat].push(card);
+            });
+
+            // Format individual hands to comply with strict PBN array requirements
+            function formatHandToPbn(cardList) {
+                let suitStrings = { 0: "", 1: "", 2: "", 3: "" };
+                
+                // Group this seat's cards by suit
+                cardList.forEach(card => {
+                    suitStrings[card.suit] += card.rank;
+                });
+
+                // Bridge notation sort: Ranks must appear from highest to lowest (A down to 2)
+                const rankOrder = "AKQJT98765432";
+                [0, 1, 2, 3].forEach(s => {
+                    suitStrings[s] = suitStrings[s].split('').sort((a, b) => {
+                        return rankOrder.indexOf(a) - rankOrder.indexOf(b);
+                    }).join('');
+                });
+
+                // Join suits with dots (Spades.Hearts.Diamonds.Clubs)
+                return `${suitStrings[0]}.${suitStrings[1]}.${suitStrings[2]}.${suitStrings[3]}`;
+            }
+
+            // Assemble the complete string matching your engine baseline specs
+            return "N:" + 
+                formatHandToPbn(hands.north) + " " + 
+                formatHandToPbn(hands.east) + " " + 
+                formatHandToPbn(hands.south) + " " + 
+                formatHandToPbn(hands.west);
+        }
+
+        // Deal Button Event Listener
+        document.getElementById('dealBtn').addEventListener('click', () => {
+            const dropZone = document.getElementById('drop-zone');
+            
+            // 1. Wipe out any active cards on the table
+            dropZone.innerHTML = '<span>PLAY ZONE</span>';
+            window.activeDraggedCard = null;
+
+            // 2. Generate a fresh randomized PBN hand string
+            const newRandomPBN = generateRandomBridgeDeal();
+
+            // 3. Update the tracking state variable so calculations use the new cards
+            // (Note: Since startingPBN is a const, we simply pass the new string into parsePbn)
+            parsePbn(newRandomPBN);
+
+            // 4. Update your base tracking string reference if you want your Reset button 
+            // to revert back to this newly dealt hand instead of the original static hand
+            window.activeStartingPBN = newRandomPBN;
+
+            // 5. Trigger the C++ engine loop to analyze the new cards
+            triggerEngineCalculation();
+        });
+
+        // Run initial parser layout loop on startup configuration
+        parsePbn(window.activeStartingPBN);
+        window.activeStartingPBN = startingPBN;
     </script>
 </body>
 </html>
