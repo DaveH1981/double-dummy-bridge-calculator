@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="styles.css">
+        <title>Double Dummy Bridge Simulator</title>
+    </head>
+
+    <body>
+        <h1>Welcome to BridgeSolver!</h1>
+        <h1>&#9824; &#9829; &#9830; &#9827;</h1><br>
+        <button id="calcBtn">Compute Best Card Play</button>
+        <div id="output"></div>
+
+        <script>
+            document.getElementById('calcBtn').addEventListener('click', async () => {
+                const outputDiv = document.getElementById('output');
+                outputDiv.innerText = "Analyzing search trees...";
+
+                // Standard PBN bridge hand notation strings sent to the native bridge API
+                const mockPBN = "N:QJ10.K5.A876.J943 T9.QJT9.K543.A82 K87.A432.QJT.K76 A65432.876.92.QT";
+
+                // Accessing the API securely from preload.js
+                const response = await window.api.solveBoardData(mockPBN);
+
+                outputDiv.innerText = `Result from DDS Engine:\nCalculated Tricks: ${response.calculatedTricks}\nEvaluated Hand: ${response.pbnEvaluated}`;
+            });
+        </script>
+
+    </body>
+
+</html>
