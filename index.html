@@ -57,13 +57,13 @@
 
     <!-- 4. Interactive Application Controller Script -->
     <script>
-       // The base starting hand definition layout
+       // Ensure window starting PBN tracking variables are safely declared globally
         const startingPBN = "N:QJ10.K5.A876.J943 T9.QJT9.K543.A82 K87.A432.QJT.K76 A65432.876.92.QT";
+        window.activeStartingPBN = startingPBN;
 
         const suitSymbols = { 0: '♠', 1: '♥', 2: '♦', 3: '♣' };
         const suitClasses = { 0: 'black', 1: 'red', 2: 'red', 3: 'black' };
 
-        // Parse standard PBN strings to populate our local card arrays
         function parsePbn(pbnString) {
             const cleanPbn = pbnString.substring(2); 
             const seats = cleanPbn.split(' '); 
@@ -71,24 +71,23 @@
             
             seats.forEach((seatCards, seatIndex) => {
                 const container = document.getElementById(`${seatOrder[seatIndex]}-hand`);
-                container.innerHTML = ''; 
-                
-                const suits = seatCards.split('.'); 
-                suits.forEach((cardsInSuit, suitIndex) => {
-                    for (let card of cardsInSuit) {
-                        createCardElement(card, suitIndex, container);
-                    }
-                });
+                if (container) {
+                    container.innerHTML = ''; // Wipe out previous renders safely
+                    
+                    const suitsArray = seatCards.split('.'); 
+                    suitsArray.forEach((cardsInSuit, suitIndex) => {
+                        for (let card of cardsInSuit) {
+                            createCardElement(card, suitIndex, container);
+                        }
+                    });
+                }
             });
         }
 
-        // Dynamically instantiate HTML card markup frames
         function createCardElement(rank, suitNum, targetContainer) {
             const cardEl = document.createElement('div');
             cardEl.className = `card ${suitClasses[suitNum]}`;
             cardEl.draggable = true;
-
-            // Attach custom data attributes to the card element so JavaScript can read them later
             cardEl.dataset.rank = rank;
             cardEl.dataset.suit = suitNum;
 
@@ -111,70 +110,67 @@
             targetContainer.appendChild(cardEl);
         }
 
-        // Initialize drop-zone area listening behaviors
         const dropZone = document.getElementById('drop-zone');
-        dropZone.addEventListener('dragover', (e) => e.preventDefault());
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            if (window.activeDraggedCard) {
-                if(dropZone.querySelector('span')) dropZone.querySelector('span').remove();
-                
-                // Remove card from container and place it in play zone
-                window.activeDraggedCard.style.margin = '0'; 
-                dropZone.appendChild(window.activeDraggedCard);
-                window.activeDraggedCard = null;
-                
-                // DYNAMIC ADVANTAGE: Automatically recalculate the matrix immediately whenever a card is played!
-                triggerEngineCalculation();
-            }
-        });
+        if (dropZone) {
+            dropZone.addEventListener('dragover', (e) => e.preventDefault());
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                if (window.activeDraggedCard) {
+                    if(dropZone.querySelector('span')) dropZone.querySelector('span').remove();
+                    
+                    window.activeDraggedCard.style.margin = '0'; 
+                    dropZone.appendChild(window.activeDraggedCard);
+                    window.activeDraggedCard = null;
+                    
+                    triggerEngineCalculation();
+                }
+            });
+        }
 
-       // NEW FIXED FUNCTION: Loops through the UI layout and builds a legally structured PBN string
-        function generateCurrentPBN() {
+        function getGameState() {
             const seatOrder = ['north', 'east', 'south', 'west'];
             let pbnSegments = [];
 
             seatOrder.forEach(seat => {
                 const container = document.getElementById(`${seat}-hand`);
-                const cards = Array.from(container.querySelectorAll('.card'));
-                
-                // Group the remaining cards in this hand by their suit integer id (0=S, 1=H, 2=D, 3=C)
                 let suitsTracking = { 0: "", 1: "", 2: "", 3: "" };
-                cards.forEach(card => {
-                    const suit = card.dataset.suit;
-                    const rank = card.dataset.rank;
-                    suitsTracking[suit] += rank;
-                });
+                
+                if (container) {
+                    const cards = Array.from(container.querySelectorAll('.card'));
+                    cards.forEach(card => {
+                        suitsTracking[card.dataset.suit] += card.dataset.rank;
+                    });
+                }
 
-                // FIXED: If a suit is empty, we must keep the dot separator intact 
-                // to prevent the string from collapsing into an invalid format like "..."
-                const spades = suitsTracking[0];
-                const hearts = suitsTracking[1];
-                const diamonds = suitsTracking[2];
-                const clubs = suitsTracking[3];
-
-                const seatString = `${spades}.${hearts}.${diamonds}.${clubs}`;
-                pbnSegments.push(seatString);
+                pbnSegments.push(`${suitsTracking[0]}.${suitsTracking[1]}.${suitsTracking[2]}.${suitsTracking[3]}`);
             });
 
-            // Return the completed string prefixed with the default dealer seat format
-            return "N:" + pbnSegments.join(" ");
+            const playedCardElements = dropZone ? Array.from(dropZone.querySelectorAll('.card')) : [];
+            const playedCards = playedCardElements.map(card => ({
+                suit: parseInt(card.dataset.suit),
+                rank: card.dataset.rank
+            }));
+
+            return {
+                pbn: "N:" + pbnSegments.join(" "),
+                playedCards: playedCards
+            };
         }
 
-
-        // Isolated engine calculation launcher tool
         async function triggerEngineCalculation() {
             const outputDiv = document.getElementById('output-panel');
+            if (!outputDiv) return;
+            
             outputDiv.innerText = "Analyzing dynamic board search trees in C++...";
 
             const selectedTrump = parseInt(document.getElementById('trumpSelect').value); 
             const selectedLead = parseInt(document.getElementById('leadSelect').value);
 
-            // Call our generator function to capture exactly what is left on the table
-            const dynamicPBN = generateCurrentPBN();
+            const gameState = getGameState();
 
             const gamePayload = {
-                pbn: dynamicPBN,
+                pbn: gameState.pbn,
+                playedCards: gameState.playedCards, 
                 trump: selectedTrump,
                 first: selectedLead
             };
@@ -187,32 +183,28 @@
             }
         }
 
-        // Bind dropdown change options to update calculations immediately on user toggles
-        document.getElementById('trumpSelect').addEventListener('change', triggerEngineCalculation);
-        document.getElementById('leadSelect').addEventListener('change', triggerEngineCalculation);
-        document.getElementById('calcBtn').addEventListener('click', triggerEngineCalculation);
-
-        // NEW FUNCTION: Generates a randomized, perfectly legal 52-card bridge deal in PBN format
+        // FIXED: Using standard push array declaration styles to guarantee brackets render safely
         function generateRandomBridgeDeal() {
             const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
-            // Suits indexed to match your existing metadata mappings: 0=S, 1=H, 2=D, 3=C
-            const suits =; 
+            const suits = [];
+            suits.push(0);
+            suits.push(1);
+            suits.push(2);
+            suits.push(3);
+            
             let deck = [];
 
-            // Create a pristine 52 card deck
             suits.forEach(suit => {
                 ranks.forEach(rank => {
                     deck.push({ rank, suit });
                 });
             });
 
-            // Fisher-Yates Shuffling Algorithm (guarantees uniform random distribution)
             for (let i = deck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [deck[i], deck[j]] = [deck[j], deck[i]];
             }
 
-            // Allocate 13 cards to each of the four seats
             let hands = { north: [], east: [], south: [], west: [] };
             const seatNames = ['north', 'east', 'south', 'west'];
             
@@ -221,28 +213,29 @@
                 hands[seat].push(card);
             });
 
-            // Format individual hands to comply with strict PBN array requirements
             function formatHandToPbn(cardList) {
                 let suitStrings = { 0: "", 1: "", 2: "", 3: "" };
                 
-                // Group this seat's cards by suit
                 cardList.forEach(card => {
                     suitStrings[card.suit] += card.rank;
                 });
 
-                // Bridge notation sort: Ranks must appear from highest to lowest (A down to 2)
                 const rankOrder = "AKQJT98765432";
-                [0, 1, 2, 3].forEach(s => {
+                const suitIndices = [];
+                suitIndices.push(0);
+                suitIndices.push(1);
+                suitIndices.push(2);
+                suitIndices.push(3);
+
+                suitIndices.forEach(s => {
                     suitStrings[s] = suitStrings[s].split('').sort((a, b) => {
                         return rankOrder.indexOf(a) - rankOrder.indexOf(b);
                     }).join('');
                 });
 
-                // Join suits with dots (Spades.Hearts.Diamonds.Clubs)
                 return `${suitStrings[0]}.${suitStrings[1]}.${suitStrings[2]}.${suitStrings[3]}`;
             }
 
-            // Assemble the complete string matching your engine baseline specs
             return "N:" + 
                 formatHandToPbn(hands.north) + " " + 
                 formatHandToPbn(hands.east) + " " + 
@@ -250,32 +243,46 @@
                 formatHandToPbn(hands.west);
         }
 
-        // Deal Button Event Listener
-        document.getElementById('dealBtn').addEventListener('click', () => {
-            const dropZone = document.getElementById('drop-zone');
-            
-            // 1. Wipe out any active cards on the table
-            dropZone.innerHTML = '<span>PLAY ZONE</span>';
+        // Global UI Form Element Change Hooks and Event Listener Assignments
+        document.getElementById('trumpSelect').addEventListener('change', triggerEngineCalculation);
+        document.getElementById('leadSelect').addEventListener('change', triggerEngineCalculation);
+        document.getElementById('calcBtn').addEventListener('click', triggerEngineCalculation);
+
+       /* document.getElementById('resetBtn').addEventListener('click', () => {
+            if (dropZone) dropZone.innerHTML = '<span>PLAY ZONE</span>';
+            parsePbn(window.activeStartingPBN);
+            triggerEngineCalculation();
+        }); */
+
+         // REPLACED RESET BUTTON: Fully updated with state safety checks
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (dropZone) {
+                dropZone.innerHTML = '<span>PLAY ZONE</span>';
+            }
             window.activeDraggedCard = null;
 
-            // 2. Generate a fresh randomized PBN hand string
+            // Safety check: ensure our tracking variable hasn't lost its initial reference
+            if (!window.activeStartingPBN) {
+                window.activeStartingPBN = startingPBN;
+            }
+
+            parsePbn(window.activeStartingPBN);
+            triggerEngineCalculation();
+        });
+        
+        document.getElementById('dealBtn').addEventListener('click', () => {
+            if (dropZone) dropZone.innerHTML = '<span>PLAY ZONE</span>';
+            window.activeDraggedCard = null;
+
             const newRandomPBN = generateRandomBridgeDeal();
-
-            // 3. Update the tracking state variable so calculations use the new cards
-            // (Note: Since startingPBN is a const, we simply pass the new string into parsePbn)
             parsePbn(newRandomPBN);
-
-            // 4. Update your base tracking string reference if you want your Reset button 
-            // to revert back to this newly dealt hand instead of the original static hand
             window.activeStartingPBN = newRandomPBN;
-
-            // 5. Trigger the C++ engine loop to analyze the new cards
             triggerEngineCalculation();
         });
 
-        // Run initial parser layout loop on startup configuration
-        parsePbn(window.activeStartingPBN);
-        window.activeStartingPBN = startingPBN;
+        // Run initial parser loop sequence on boot to draw initial cards layout
+        parsePbn(startingPBN);
+        triggerEngineCalculation();
     </script>
 </body>
 </html>
