@@ -1,146 +1,121 @@
-        :root {
-            --table-green: #1a5e3a;
-            --felt-shadow: inset 0 0 100px rgba(0,0,0,0.6);
-            --card-width: 70px;
-            --card-height: 100px;
-        }
+       /* revamped styles.css for new UI */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    margin: 20px;
+}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1a1a1a;
-            color: #fff;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+.controls-panel {
+    background-color: #34495e;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
 
-        span {
-            color: rgba(255,255,255,0.4); 
-            font-size: 12px; 
-            pointer-events:none;
-        }
+select, button {
+    padding: 8px 12px;
+    font-size: 14px;
+    border-radius: 4px;
+    border: none;
+}
 
-        /* 2. Controls Header Bar */
-        .controls-panel {
-            background: #2a2a2a;
-            padding: 15px 30px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
+button {
+    background-color: #27ae60;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+}
 
-        select, button {
-            background: #007acc;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+button:hover { 
+    background-color: #219653; 
+}
 
-        select { background: #444; }
-        button:hover { background: #0062a3; }
+.secondary-btn { 
+    background-color: #7f8c8d; 
+}
 
-        /* 3. The 3x3 Grid Bridge Table Layout */
-        .bridge-table {
-            display: grid;
-            grid-template-columns: var(--card-height) 1fr var(--card-height);
-            grid-template-rows: var(--card-height) 1fr var(--card-height);
-            width: 700px;
-            height: 550px;
-            background: var(--table-green);
-            box-shadow: var(--felt-shadow), 0 10px 30px rgba(0,0,0,0.5);
-            border-radius: 150px; /* Gives it an elegant oval card table feel */
-            border: 12px solid #5c4033; /* Wooden border ring */
-            position: relative;
-            padding: 20px;
-        }
+.secondary-btn:hover { 
+    background-color: #95a5a6; 
+}
 
-        /* Compass seat layout positions */
-        .seat {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-        #north-seat { grid-column: 2; grid-row: 1; }
-        #west-seat  { grid-column: 1; grid-row: 2; flex-direction: column; }
-        #east-seat  { grid-column: 3; grid-row: 2; flex-direction: column; }
-        #south-seat { grid-column: 2; grid-row: 3; }
+#dealBtn { 
+    background-color: #2980b9; 
+}
 
-        /* Center felt trick drop area */
-        .center-felt {
-            grid-column: 2;
-            grid-row: 2;
-            border: 2px dashed rgba(255,255,255,0.2);
-            border-radius: 50%;
-            margin: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: rgba(0,0,0,0.1);
-        }
+#dealBtn:hover { 
+    background-color: #3498db; 
+}
 
-        /* 4. Visual Card Styles */
-        .hand-container {
-            display: flex;
-            gap: -25px; /* Overlaps cards slightly like a real hand */
-        }
-        /* Make overlapping tighter by overriding margin */
-        .hand-container .card {
-            margin-right: -40px;
-            transition: transform 0.2s, margin-right 0.2s;
-        }
-        .hand-container .card:last-child { margin-right: 0; }
-        .hand-container .card:hover {
-            transform: translateY(-15px); /* Pops up when hovered */
-            z-index: 100;
-        }
+/* Traditional Cross-Layout Grid Felt Table */
+.bridge-table {
+    display: grid;
+    grid-template-columns: 220px 260px 220px;
+    grid-template-rows: auto auto auto;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+    max-width: 800px;
+    margin: 0 auto;
+}
 
-        .card {
-            width: var(--card-width);
-            height: var(--card-height);
-            background: white;
-            color: black;
-            border-radius: 6px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 5px;
-            box-sizing: border-box;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: grab;
-            user-select: none;
-        }
-        .card.red { color: #d12c2c; }
-        .card.black { color: #111; }
-        .card:active { cursor: grabbing; }
+.seat {
+    background-color: #1e272e;
+    border: 2px solid #57606f;
+    border-radius: 8px;
+    padding: 15px;
+    min-height: 120px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
 
-        #dealBtn {
-            background: #28a745;
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        
-        #output-panel {
-            margin-top: 25px;
-            background: #2a2a2a;
-            padding: 15px;
-            border-radius: 6px;
-            width: 660px;
-            text-align: center;
-            font-size: 18px;
-            border-left: 5px solid #007acc;
-        }
+.seat-title {
+    font-weight: bold;
+    text-align: center;
+    border-bottom: 1px solid #57606f;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    color: #f1c40f;
+}
+
+#north-seat { grid-column: 2; grid-row: 1; }
+#west-seat  { grid-column: 1; grid-row: 2; }
+#east-seat  { grid-column: 3; grid-row: 2; }
+#south-seat { grid-column: 2; grid-row: 3; }
+
+.center-felt {
+    grid-column: 2;
+    grid-row: 2;
+    background-color: #05c46b;
+    border: 4px dashed #fff;
+    border-radius: 50%;
+    height: 180px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 4px rgba(0,0,0,0.6);
+}
+
+/* Standard Real-World Bridge Hand Line Styling Rules */
+.suit-line {
+    display: flex;
+    align-items: center;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 18px;
+    line-height: 1.4;
+    letter-spacing: 2px;
+}
+
+#output-panel {
+    background-color: #34495e;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 25px;
+    text-align: center;
+    font-size: 16px;
+    border-left: 5px solid #f1c40f;
+}
