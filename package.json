@@ -3,20 +3,15 @@
   "version": "1.0.0",
   "description": "a double-dummy bridge simulator app",
   "main": "main.js",
-  "gypfile": true,
   "scripts": {
-    "build-native": "node-gyp configure build",
-    "start": "npm run build-native && electron ."
+    "start": "electron ."
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "electron": "^43.1.0",
-    "node-gyp": "^12.4.0"
+    "electron": "^43.1.0"
   },
-  "dependencies": {
-    "node-addon-api": "^8.9.0"
-  }
+  "dependencies": {}
 }
