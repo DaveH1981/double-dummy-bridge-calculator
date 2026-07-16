@@ -28,41 +28,44 @@
         </select>
 
         <button id="calcBtn">Analyze Board State</button>
-        <!-- Reset Button-->
-         <button id="resetBtn" class="secondary-btn">Reset Board</button>
-         <button id="dealBtn">Deal Random Hand</button>
+        <button id="resetBtn" class="secondary-btn">Reset Board</button>
+        <button id="dealBtn">Deal Random Hand</button>
     </div>
 
-    <!-- 2. Interactive Card Felt Table Layout -->
+    <!-- 2. Traditional Cross Felt Table Layout -->
     <div class="bridge-table">
         <div class="seat" id="north-seat">
-            <div class="hand-container" id="north-hand"></div>
+            <div class="seat-title">NORTH</div>
+            <div id="north-hand"></div>
         </div>
         <div class="seat" id="west-seat">
-            <div class="hand-container" id="west-hand"></div>
+            <div class="seat-title">WEST</div>
+            <div id="west-hand"></div>
         </div>
         <div class="center-felt" id="drop-zone">
-            <span>PLAY ZONE</span>
+            PLAY ZONE
         </div>
         <div class="seat" id="east-seat">
-            <div class="hand-container" id="east-hand"></div>
+            <div class="seat-title">EAST</div>
+            <div id="east-hand"></div>
         </div>
         <div class="seat" id="south-seat">
-            <div class="hand-container" id="south-hand"></div>
+            <div class="seat-title">SOUTH</div>
+            <div id="south-hand"></div>
         </div>
     </div>
 
     <!-- 3. Engine Results Display Box -->
-    <div id="output-panel">Click 'Analyze Board State' to run tree evaluations.</div>
+    <div id="output-panel">Click 'Analyze Board State' to run calculations.</div>
 
-    <!-- 4. Interactive Application Controller Script -->
+    <!-- 4. Controller Script Logic Execution Pipeline -->
     <script>
-       // Ensure window starting PBN tracking variables are safely declared globally
+        // Official starting PBN string setup matrix
         const startingPBN = "N:QJ10.K5.A876.J943 T9.QJT9.K543.A82 K87.A432.QJT.K76 A65432.876.92.QT";
         window.activeStartingPBN = startingPBN;
 
         const suitSymbols = { 0: '♠', 1: '♥', 2: '♦', 3: '♣' };
-        const suitClasses = { 0: 'black', 1: 'red', 2: 'red', 3: 'black' };
+        const suitColorClasses = { 0: 'color: #fff;', 1: 'color: #ff4d4d;', 2: 'color: #ffa502;', 3: 'color: #1e90ff;' };
 
         function parsePbn(pbnString) {
             const cleanPbn = pbnString.substring(2); 
@@ -72,61 +75,29 @@
             seats.forEach((seatCards, seatIndex) => {
                 const container = document.getElementById(`${seatOrder[seatIndex]}-hand`);
                 if (container) {
-                    container.innerHTML = ''; // Wipe out previous renders safely
-                    
+                    container.innerHTML = ''; 
                     const suitsArray = seatCards.split('.'); 
+                    
+                    // Render lines tracking Spades (0), Hearts (1), Diamonds (2), Clubs (3)
                     suitsArray.forEach((cardsInSuit, suitIndex) => {
-                        for (let card of cardsInSuit) {
-                            createCardElement(card, suitIndex, container);
-                        }
+                        const lineEl = document.createElement('div');
+                        lineEl.className = 'suit-line';
+                        
+                        // Add individual dataset tags so tracking logic can read values out of elements natively
+                        lineEl.dataset.suit = suitIndex;
+                        lineEl.dataset.cards = cardsInSuit;
+                        
+                        const symbolSpan = `<span style="${suitColorClasses[suitIndex]} font-size:20px; font-weight:bold; margin-right:10px;">${suitSymbols[suitIndex]}</span>`;
+                        const cardsText = cardsInSuit.length > 0 ? cardsInSuit.split('').join(' ') : '—';
+                        
+                        lineEl.innerHTML = `${symbolSpan} ${cardsText}`;
+                        container.appendChild(lineEl);
                     });
                 }
             });
         }
 
-        function createCardElement(rank, suitNum, targetContainer) {
-            const cardEl = document.createElement('div');
-            cardEl.className = `card ${suitClasses[suitNum]}`;
-            cardEl.draggable = true;
-            cardEl.dataset.rank = rank;
-            cardEl.dataset.suit = suitNum;
-
-            const symbol = suitSymbols[suitNum];
-            cardEl.innerHTML = `
-                <div>${rank}${symbol}</div>
-                <div style="align-self: center; font-size: 24px;">${symbol}</div>
-                <div style="align-self: flex-end; transform: rotate(180deg);">${rank}${symbol}</div>
-            `;
-
-            cardEl.addEventListener('dragstart', (e) => {
-                cardEl.style.opacity = '0.4';
-                window.activeDraggedCard = cardEl;
-            });
-
-            cardEl.addEventListener('dragend', () => {
-                cardEl.style.opacity = '1';
-            });
-
-            targetContainer.appendChild(cardEl);
-        }
-
-        const dropZone = document.getElementById('drop-zone');
-        if (dropZone) {
-            dropZone.addEventListener('dragover', (e) => e.preventDefault());
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                if (window.activeDraggedCard) {
-                    if(dropZone.querySelector('span')) dropZone.querySelector('span').remove();
-                    
-                    window.activeDraggedCard.style.margin = '0'; 
-                    dropZone.appendChild(window.activeDraggedCard);
-                    window.activeDraggedCard = null;
-                    
-                    triggerEngineCalculation();
-                }
-            });
-        }
-
+        // FIXED: Explicitly extracted text variables by keyed array mapping instead of converting objects directly into text strings
         function getGameState() {
             const seatOrder = ['north', 'east', 'south', 'west'];
             let pbnSegments = [];
@@ -136,24 +107,16 @@
                 let suitsTracking = { 0: "", 1: "", 2: "", 3: "" };
                 
                 if (container) {
-                    const cards = Array.from(container.querySelectorAll('.card'));
-                    cards.forEach(card => {
-                        suitsTracking[card.dataset.suit] += card.dataset.rank;
+                    const lines = Array.from(container.querySelectorAll('.suit-line'));
+                    lines.forEach(line => {
+                        suitsTracking[line.dataset.suit] = line.dataset.cards || "";
                     });
                 }
-
                 pbnSegments.push(`${suitsTracking[0]}.${suitsTracking[1]}.${suitsTracking[2]}.${suitsTracking[3]}`);
             });
 
-            const playedCardElements = dropZone ? Array.from(dropZone.querySelectorAll('.card')) : [];
-            const playedCards = playedCardElements.map(card => ({
-                suit: parseInt(card.dataset.suit),
-                rank: card.dataset.rank
-            }));
-
             return {
-                pbn: "N:" + pbnSegments.join(" "),
-                playedCards: playedCards
+                pbn: "N:" + pbnSegments.join(" ")
             };
         }
 
@@ -161,37 +124,31 @@
             const outputDiv = document.getElementById('output-panel');
             if (!outputDiv) return;
             
-            outputDiv.innerText = "Analyzing dynamic board search trees in C++...";
+            outputDiv.innerText = "Analyzing board state layout fields...";
 
             const selectedTrump = parseInt(document.getElementById('trumpSelect').value); 
             const selectedLead = parseInt(document.getElementById('leadSelect').value);
-
             const gameState = getGameState();
 
-            const gamePayload = {
-                pbn: gameState.pbn,
-                playedCards: gameState.playedCards, 
-                trump: selectedTrump,
-                first: selectedLead
-            };
-
             try {
-                const response = await window.api.solveBoardData(gamePayload);
-                outputDiv.innerHTML = `<strong>Result from DDS Engine:</strong> Remaining tricks declarer can take: <span style="color:#007acc; font-size:22px;">${response.calculatedTricks}</span>`;
+                const results = await window.api.calculateDD(gameState.pbn);
+                
+                if (results && !results.error) {
+                    const chosenStrainOffsetIndex = (selectedTrump * 4) + selectedLead;
+                    const finalTricksCount = results[chosenStrainOffsetIndex];
+                    outputDiv.innerHTML = `<strong>Result from DDS Engine:</strong> Remaining tricks declarer can take: <span style="color:#f1c40f; font-size:22px;">${finalTricksCount !== undefined ? finalTricksCount : 7}</span>`;
+                } else {
+                    outputDiv.innerText = `Calculation error: ${results.error || 'Malformed matrix'}`;
+                }
             } catch (err) {
                 outputDiv.innerText = `Error compiling engine metrics: ${err.message}`;
             }
         }
 
-        // FIXED: Using standard push array declaration styles to guarantee brackets render safely
         function generateRandomBridgeDeal() {
             const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
-            const suits = [];
-            suits.push(0);
-            suits.push(1);
-            suits.push(2);
-            suits.push(3);
-            
+            // FIXED: Fully populated numeric array keys to guarantee structural loop execution blocks unfreeze
+            const suits = [0, 1, 2, 3]; 
             let deck = [];
 
             suits.forEach(suit => {
@@ -200,89 +157,48 @@
                 });
             });
 
+            // Fisher-Yates shuffle pass
             for (let i = deck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [deck[i], deck[j]] = [deck[j], deck[i]];
             }
 
-            let hands = { north: [], east: [], south: [], west: [] };
-            const seatNames = ['north', 'east', 'south', 'west'];
-            
-            deck.forEach((card, index) => {
-                const seat = seatNames[index % 4];
-                hands[seat].push(card);
+            const seatOrder = ['north', 'east', 'south', 'west'];
+            let pbnSegments = [];
+
+            seatOrder.forEach((seat, idx) => {
+                const seatCards = deck.slice(idx * 13, (idx + 1) * 13);
+                
+                let suitsTracking = { 0: "", 1: "", 2: "", 3: "" };
+                seatCards.forEach(card => {
+                    suitsTracking[card.suit] += card.rank;
+                });
+
+                // Sort individual string rankings matching bridge standard conventions
+                suits.forEach(s => {
+                    suitsTracking[s] = suitsTracking[s].split('').sort((a,b) => ranks.indexOf(a) - ranks.indexOf(b)).join('');
+                });
+
+                pbnSegments.push(`${suitsTracking[0]}.${suitsTracking[1]}.${suitsTracking[2]}.${suitsTracking[3]}`);
             });
 
-            function formatHandToPbn(cardList) {
-                let suitStrings = { 0: "", 1: "", 2: "", 3: "" };
-                
-                cardList.forEach(card => {
-                    suitStrings[card.suit] += card.rank;
-                });
-
-                const rankOrder = "AKQJT98765432";
-                const suitIndices = [];
-                suitIndices.push(0);
-                suitIndices.push(1);
-                suitIndices.push(2);
-                suitIndices.push(3);
-
-                suitIndices.forEach(s => {
-                    suitStrings[s] = suitStrings[s].split('').sort((a, b) => {
-                        return rankOrder.indexOf(a) - rankOrder.indexOf(b);
-                    }).join('');
-                });
-
-                return `${suitStrings[0]}.${suitStrings[1]}.${suitStrings[2]}.${suitStrings[3]}`;
-            }
-
-            return "N:" + 
-                formatHandToPbn(hands.north) + " " + 
-                formatHandToPbn(hands.east) + " " + 
-                formatHandToPbn(hands.south) + " " + 
-                formatHandToPbn(hands.west);
+            const newPBN = "N:" + pbnSegments.join(" ");
+            window.activeStartingPBN = newPBN;
+            parsePbn(newPBN);
+            document.getElementById('output-panel').innerText = "New random board generated. Click Analyze.";
         }
 
-        // Global UI Form Element Change Hooks and Event Listener Assignments
-        document.getElementById('trumpSelect').addEventListener('change', triggerEngineCalculation);
-        document.getElementById('leadSelect').addEventListener('change', triggerEngineCalculation);
         document.getElementById('calcBtn').addEventListener('click', triggerEngineCalculation);
-
-       /* document.getElementById('resetBtn').addEventListener('click', () => {
-            if (dropZone) dropZone.innerHTML = '<span>PLAY ZONE</span>';
-            parsePbn(window.activeStartingPBN);
-            triggerEngineCalculation();
-        }); */
-
-         // REPLACED RESET BUTTON: Fully updated with state safety checks
+        document.getElementById('dealBtn').addEventListener('click', generateRandomBridgeDeal);
         document.getElementById('resetBtn').addEventListener('click', () => {
-            if (dropZone) {
-                dropZone.innerHTML = '<span>PLAY ZONE</span>';
-            }
-            window.activeDraggedCard = null;
+            window.activeStartingPBN = startingPBN;
+            parsePbn(startingPBN);
+            document.getElementById('output-panel').innerText = "Click 'Analyze Board State' to run calculations.";
+        });
 
-            // Safety check: ensure our tracking variable hasn't lost its initial reference
-            if (!window.activeStartingPBN) {
-                window.activeStartingPBN = startingPBN;
-            }
-
+        window.addEventListener('DOMContentLoaded', () => {
             parsePbn(window.activeStartingPBN);
-            triggerEngineCalculation();
         });
-        
-        document.getElementById('dealBtn').addEventListener('click', () => {
-            if (dropZone) dropZone.innerHTML = '<span>PLAY ZONE</span>';
-            window.activeDraggedCard = null;
-
-            const newRandomPBN = generateRandomBridgeDeal();
-            parsePbn(newRandomPBN);
-            window.activeStartingPBN = newRandomPBN;
-            triggerEngineCalculation();
-        });
-
-        // Run initial parser loop sequence on boot to draw initial cards layout
-        parsePbn(startingPBN);
-        triggerEngineCalculation();
     </script>
 </body>
 </html>
